@@ -66,8 +66,8 @@ github.com/gkampitakis/ciinfo v0.3.4 h1:5eBSibVuSMbb/H6Elc0IIEFbkzCJi3lm94n0+U7Z
 github.com/gkampitakis/ciinfo v0.3.4/go.mod h1:1NIwaOcFChN4fa/B0hEBdAb6npDlFL8Bwx4dfRLRqAo=
 github.com/gkampitakis/go-snaps v0.5.22 h1:xg9omphRnbDnimMCl1KqznC4krlxOGpkB0vDSfX2P7M=
 github.com/gkampitakis/go-snaps v0.5.22/go.mod h1:uy3lVzCCRRsAwYqSocyw5fY8xRLCYEfqoOJNxr8HonM=
-github.com/gleanwork/api-client-go v0.11.43 h1:2gsZrTQ/W0Wg9/7F9Yx8tNNZYYDf2lOKkvfkGoCrd+o=
-github.com/gleanwork/api-client-go v0.11.43/go.mod h1:L/T98WxKt7zt8zCseqEMMVySc2vGCh3tYn2cYrmnOsM=
+github.com/gleanwork/api-client-go v0.12.0 h1:umtm2Fa1rRqFcBKWDpJwqGbekAysvb7jjvPSs78CB/c=
+github.com/gleanwork/api-client-go v0.12.0/go.mod h1:EL9EbKruPM+pb75cD1ivKVIaM86ysyro13Ssl/EDVTo=
 github.com/go-jose/go-jose/v4 v4.1.4 h1:moDMcTHmvE6Groj34emNPLs/qtYXRVcd6S7NHbHz3kA=
 github.com/go-jose/go-jose/v4 v4.1.4/go.mod h1:x4oUasVrzR7071A4TnHLGSPpNOm2a21K9Kf04k1rs08=
 github.com/goccy/go-yaml v1.19.2 h1:PmFC1S6h8ljIz6gMRBopkjP1TVT7xuwrButHID66PoM=
