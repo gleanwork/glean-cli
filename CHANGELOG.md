@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.1](https://github.com/gleanwork/glean-cli/compare/v0.17.0...v0.17.1) (2026-06-29)
+
+
+### Dependencies
+
+* **deps:** bump github.com/coreos/go-oidc/v3 from 3.18.0 to 3.19.0 ([#121](https://github.com/gleanwork/glean-cli/issues/121)) ([914fcb9](https://github.com/gleanwork/glean-cli/commit/914fcb9256dbaaa192cf614c30ad743d837ee297))
+* **deps:** bump github.com/gkampitakis/go-snaps from 0.5.21 to 0.5.22 ([#116](https://github.com/gleanwork/glean-cli/issues/116)) ([21841c1](https://github.com/gleanwork/glean-cli/commit/21841c1dd053f06906dbd397f935b6b333a17875))
+* **deps:** bump github.com/gleanwork/api-client-go ([#117](https://github.com/gleanwork/glean-cli/issues/117)) ([5ddbc57](https://github.com/gleanwork/glean-cli/commit/5ddbc57567f20e4813740c3c7665e2496542fefb))
+* **deps:** bump golang.org/x/mod from 0.35.0 to 0.37.0 ([#119](https://github.com/gleanwork/glean-cli/issues/119)) ([f961e9d](https://github.com/gleanwork/glean-cli/commit/f961e9d4bec5ee91efdf5953b691df208cf22c07))
+* **deps:** bump golang.org/x/term from 0.42.0 to 0.44.0 ([#118](https://github.com/gleanwork/glean-cli/issues/118)) ([7e405b9](https://github.com/gleanwork/glean-cli/commit/7e405b9e499a3a6b95748d3bb9844b5a1ec20b56))
+
+
+### Continuous Integration
+
+* **deps:** bump actions/checkout from 6 to 7 ([#120](https://github.com/gleanwork/glean-cli/issues/120)) ([70b0735](https://github.com/gleanwork/glean-cli/commit/70b0735da0465643d83ecde55c86896c3b12e1e0))
+
 ## [0.17.0](https://github.com/gleanwork/glean-cli/compare/v0.16.1...v0.17.0) (2026-05-05)
 
 
