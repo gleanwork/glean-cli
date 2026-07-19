@@ -21,7 +21,23 @@ import (
 	glean "github.com/gleanwork/api-client-go"
 	gleanClient "github.com/gleanwork/glean-cli/internal/client"
 	"github.com/gleanwork/glean-cli/internal/output"
+	"github.com/gleanwork/glean-cli/internal/platform"
 	"github.com/spf13/cobra"
+)
+
+// FallbackMode controls what a platform-first command (Spec.LegacyRun != nil)
+// does when the platform endpoint is gated off (hidden 404).
+type FallbackMode int
+
+const (
+	// FallbackAuto retries via LegacyRun with a one-time warning. Use for
+	// commands whose request the CLI built itself (or whose input is
+	// surface-agnostic, like a bare ID).
+	FallbackAuto FallbackMode = iota
+	// FallbackEnvOnly never retries automatically: gate-closed produces an
+	// actionable error naming GLEAN_LEGACY_APIS. Use for commands whose
+	// --json body is user-authored and coupled to the endpoint's shape.
+	FallbackEnvOnly
 )
 
 // Spec describes a single SDK-backed subcommand.
@@ -33,6 +49,23 @@ type Spec[Req any] struct {
 	// JSONRequired causes an error when --json is absent.
 	// Set false for list/read commands where the request body is optional.
 	JSONRequired bool
+
+	// Endpoint is the platform API path used in fallback warnings and
+	// gate-closed errors (e.g. "/api/agents/search"). Required when
+	// LegacyRun is set.
+	Endpoint string
+
+	// FallbackMode selects the gate-closed behavior when LegacyRun is set.
+	// The zero value is FallbackAuto.
+	FallbackMode FallbackMode
+
+	// LegacyRun, when non-nil, marks this command platform-first: Run is the
+	// platform API call, and LegacyRun serves the classic API instead when
+	// GLEAN_LEGACY_APIS=1 or as the gate-closed fallback (FallbackAuto).
+	// It receives the normalized --json bytes (snake_case keys — the CLI's
+	// canonical input shape) so it can unmarshal the classic request type,
+	// which differs from the platform Req type.
+	LegacyRun func(ctx context.Context, sdk *glean.Glean, rawJSON []byte) (any, error)
 
 	// ErrTransform optionally remaps errors returned by json.Unmarshal before
 	// they are surfaced to the user. Use it to replace Go type names in SDK
@@ -50,6 +83,7 @@ type Spec[Req any] struct {
 	// The payload must be the inner component field — NOT the operation wrapper
 	// (e.g. return resp.ListCollectionsResponse, not resp).
 	// Return (nil, nil) for operations with no response body (delete, etc.).
+	// When LegacyRun is set, Run is the platform API call.
 	Run func(ctx context.Context, sdk *glean.Glean, req Req) (any, error)
 }
 
@@ -74,9 +108,18 @@ func Build[Req any](spec Spec[Req]) *cobra.Command {
 				return fmt.Errorf("--json is required\n\nRun '%s --help' for the expected payload format", cmd.CommandPath())
 			}
 
-			var req Req
+			var normalized []byte
 			if jsonPayload != "" {
-				normalized := normalizeKeys([]byte(jsonPayload), aliases)
+				normalized = normalizeKeys([]byte(jsonPayload), aliases)
+			}
+
+			// In legacy mode the payload is parsed by LegacyRun against the
+			// classic request type, so skip the platform-type parse (the two
+			// shapes differ and a legacy payload may not satisfy it).
+			legacyMode := spec.LegacyRun != nil && platform.Legacy()
+
+			var req Req
+			if len(normalized) > 0 && !legacyMode {
 				if err := json.Unmarshal(normalized, &req); err != nil {
 					if spec.ErrTransform != nil {
 						return spec.ErrTransform(err)
@@ -86,6 +129,17 @@ func Build[Req any](spec Spec[Req]) *cobra.Command {
 			}
 
 			if dryRun {
+				if legacyMode {
+					// The classic request type is known only to LegacyRun;
+					// show the normalized payload as-is.
+					payload := map[string]any{}
+					if len(normalized) > 0 {
+						if err := json.Unmarshal(normalized, &payload); err != nil {
+							return fmt.Errorf("invalid --json: %w", err)
+						}
+					}
+					return output.WriteJSON(cmd.OutOrStdout(), payload)
+				}
 				return output.WriteJSON(cmd.OutOrStdout(), req)
 			}
 
@@ -94,7 +148,23 @@ func Build[Req any](spec Spec[Req]) *cobra.Command {
 				return err
 			}
 
-			result, err := spec.Run(cmd.Context(), sdk, req)
+			var result any
+			switch {
+			case spec.LegacyRun == nil:
+				result, err = spec.Run(cmd.Context(), sdk, req)
+			case legacyMode:
+				result, err = spec.LegacyRun(cmd.Context(), sdk, normalized)
+			case spec.FallbackMode == FallbackEnvOnly:
+				result, err = spec.Run(cmd.Context(), sdk, req)
+				if err != nil && platform.IsGateClosed(err) {
+					return platform.GateClosedErr(spec.Endpoint, err)
+				}
+			default: // FallbackAuto
+				result, _, err = platform.Run(cmd.Context(), cmd.ErrOrStderr(), spec.Endpoint,
+					func(ctx context.Context) (any, error) { return spec.Run(ctx, sdk, req) },
+					func(ctx context.Context) (any, error) { return spec.LegacyRun(ctx, sdk, normalized) },
+				)
+			}
 			if err != nil {
 				return err
 			}
