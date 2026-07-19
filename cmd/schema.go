@@ -52,17 +52,19 @@ glean chat --json '{"messages":[{"author":"USER","messageType":"CONTENT","fragme
 
 	schema.Register(schema.CommandSchema{
 		Command:     "api",
-		Description: "Make a raw authenticated HTTP request to any Glean REST API endpoint.",
+		Description: "Make a raw authenticated HTTP request to any Glean API endpoint. Bare paths default to /rest/api/v1/; /rest/* and /api/* paths are used verbatim. Requests to /api/* (platform APIs) automatically send the X-Glean-Include-Experimental header.",
 		Flags: map[string]schema.FlagSchema{
-			"--method":    {Type: "enum", Enum: []string{"GET", "POST", "PUT", "DELETE", "PATCH"}, Default: "GET", Description: "HTTP method"},
-			"--raw-field": {Type: "string", Description: "JSON request body as a string"},
-			"--input":     {Type: "string", Description: "Path to a JSON file to use as request body"},
-			"--preview":   {Type: "boolean", Default: false, Description: "Print request details without sending"},
-			"--raw":       {Type: "boolean", Default: false, Description: "Print raw response without syntax highlighting"},
-			"--no-color":  {Type: "boolean", Default: false, Description: "Disable colorized output"},
-			"--dry-run":   {Type: "boolean", Default: false, Description: "Same as --preview"},
+			"--method":       {Type: "enum", Enum: []string{"GET", "POST", "PUT", "DELETE", "PATCH"}, Default: "GET", Description: "HTTP method"},
+			"--raw-field":    {Type: "string", Description: "JSON request body as a string"},
+			"--input":        {Type: "string", Description: "Path to a JSON file to use as request body"},
+			"--preview":      {Type: "boolean", Default: false, Description: "Print request details without sending"},
+			"--raw":          {Type: "boolean", Default: false, Description: "Print raw response without syntax highlighting"},
+			"--no-color":     {Type: "boolean", Default: false, Description: "Disable colorized output"},
+			"--experimental": {Type: "boolean", Default: false, Description: "Send the X-Glean-Include-Experimental header (automatic for /api/* paths)"},
+			"--dry-run":      {Type: "boolean", Default: false, Description: "Same as --preview"},
 		},
-		Example: `glean api search --method POST --raw-field '{"query":"test"}' --no-color | jq .results`,
+		Example: `glean api search --method POST --raw-field '{"query":"test"}' --no-color | jq .results
+glean api /api/search --method POST --raw-field '{"query":"test"}' | jq .results`,
 	})
 
 	schema.Register(schema.CommandSchema{
