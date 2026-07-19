@@ -1,4 +1,7 @@
-// Package skills generates SKILL.md files from the CLI's own schema registry.
+// Package skills generates a single thin SKILL.md from the CLI's schema
+// registry. The skill deliberately contains almost no command detail: its job
+// is to route agents to `glean agent-help`, which generates version-accurate
+// usage from the installed binary and is therefore the source of truth.
 //
 // Usage: glean generate-skills [--output-dir skills/]
 package skills
@@ -7,7 +10,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"text/template"
 
@@ -17,148 +19,9 @@ import (
 // rootSkillName is the directory and frontmatter name for the root discovery skill.
 const rootSkillName = "glean-cli"
 
-// skillPrefix is prepended to command names to form skill directory and
-// frontmatter names (e.g. "glean-cli-search").
+// skillPrefix matches legacy per-command skill directory names
+// (e.g. "glean-cli-search") for cleanup.
 const skillPrefix = rootSkillName + "-"
-
-// subcommandMap provides human-friendly descriptions for subcommands that
-// the schema registry doesn't capture (schemas are per-namespace, not per-sub).
-// Keys are "namespace.subcommand".
-var subcommandMap = map[string]string{
-	"agents.list":               "List all available agents",
-	"agents.get":                "Get details of a specific agent",
-	"agents.schemas":            "Get input/output schemas for an agent",
-	"agents.run":                "Run an agent",
-	"answers.list":              "List all curated answers",
-	"answers.get":               "Get a specific answer",
-	"answers.create":            "Create a new answer",
-	"answers.update":            "Update an existing answer",
-	"answers.delete":            "Delete an answer",
-	"announcements.create":      "Create a new announcement",
-	"announcements.update":      "Update an existing announcement",
-	"announcements.delete":      "Delete an announcement",
-	"collections.list":          "List all collections",
-	"collections.get":           "Get a specific collection",
-	"collections.create":        "Create a new collection",
-	"collections.update":        "Update a collection",
-	"collections.delete":        "Delete a collection",
-	"collections.add-items":     "Add documents to a collection",
-	"collections.delete-item":   "Remove a document from a collection",
-	"documents.get":             "Retrieve document metadata by URL or ID",
-	"documents.summarize":       "Generate an AI summary of a document",
-	"documents.get-by-facets":   "Retrieve documents matching facet filters",
-	"documents.get-permissions": "Inspect who has access to a document",
-	"entities.list":             "List entities by type and query",
-	"entities.read-people":      "Get detailed people profiles",
-	"insights.get":              "Get analytics data",
-	"messages.get":              "Retrieve a specific message",
-	"pins.list":                 "List all pins",
-	"pins.get":                  "Get a specific pin",
-	"pins.create":               "Create a new pin",
-	"pins.update":               "Update a pin",
-	"pins.remove":               "Remove a pin",
-	"shortcuts.list":            "List all shortcuts",
-	"shortcuts.get":             "Get a specific shortcut",
-	"shortcuts.create":          "Create a new shortcut",
-	"shortcuts.update":          "Update an existing shortcut",
-	"shortcuts.delete":          "Delete a shortcut",
-	"tools.list":                "List available platform tools",
-	"tools.run":                 "Execute a platform tool",
-	"verification.list":         "List documents pending verification",
-	"verification.verify":       "Mark a document as verified",
-	"verification.remind":       "Send a verification reminder",
-	"activity.report":           "Report a user activity event",
-	"activity.feedback":         "Submit feedback on search results",
-}
-
-// skillDescription maps command names to richer descriptions for the SKILL.md
-// frontmatter. These are tuned for agent skill triggering.
-var skillDescription = map[string]string{
-	"search":        "Search across company knowledge with the Glean CLI. Use when finding documents, policies, engineering docs, or any information across enterprise data sources.",
-	"chat":          "Chat with Glean Assistant from the command line. Use when asking questions, summarizing documents, or getting AI-powered answers about company knowledge.",
-	"api":           "Make raw authenticated HTTP requests to any Glean REST API endpoint. Use when no dedicated command exists or for advanced API access.",
-	"agents":        "List, inspect, and run Glean AI agents. Use when discovering available agents, viewing agent schemas, or invoking agents programmatically.",
-	"documents":     "Retrieve, summarize, and inspect documents indexed by Glean. Use when getting document content, summaries, permissions, or metadata by URL.",
-	"collections":   "Manage curated document collections in Glean. Use when creating, updating, or organizing themed sets of documents.",
-	"entities":      "Look up people, teams, and custom entities in Glean. Use when finding employees, org structure, team members, or expertise.",
-	"answers":       "Manage curated Q&A pairs in Glean. Use when creating, updating, or listing company-approved answers to common questions.",
-	"shortcuts":     "Manage Glean go-links (shortcuts). Use when creating, listing, updating, or deleting short URL aliases like go/wiki.",
-	"pins":          "Manage promoted search results (pins) in Glean. Use when pinning specific documents to appear first for certain queries.",
-	"announcements": "Manage time-bounded company announcements in Glean. Use when creating, updating, or deleting announcements that surface across the Glean UI.",
-	"activity":      "Report user activity and submit feedback to Glean. Use when logging user interactions or providing relevance feedback on search results.",
-	"verification":  "Manage document verification and review workflows in Glean. Use when verifying document accuracy, listing pending verifications, or sending review reminders.",
-	"tools":         "List and run Glean platform tools. Use when discovering available platform tools or executing them programmatically.",
-	"messages":      "Retrieve indexed messages from Slack, Teams, and other messaging platforms via Glean. Use when searching for or reading specific messages.",
-	"insights":      "Retrieve search and usage analytics from Glean. Use when analyzing search patterns, popular queries, or platform adoption metrics.",
-}
-
-// FlagInfo holds rendered flag data for templates.
-type FlagInfo struct {
-	Name        string
-	Type        string
-	Default     string
-	Description string
-	Required    bool
-}
-
-// SkillData holds all data needed to render a SKILL.md template.
-type SkillData struct {
-	Prefix      string
-	RootSkill   string
-	Name        string
-	Description string
-	Command     string
-	SchemaDesc  string
-	Flags       []FlagInfo
-	Subcommands []SubcommandInfo
-	Example     string
-	HasDryRun   bool
-}
-
-// SubcommandInfo describes a subcommand.
-type SubcommandInfo struct {
-	Name        string
-	Description string
-}
-
-var referenceTmpl = template.Must(template.New("reference").Parse(`# glean {{ .Command }}
-
-{{ .SchemaDesc }}
-
-` + "```bash" + `
-glean {{ .Command }}{{ if .Subcommands }} <subcommand>{{ end }} [flags]
-` + "```" + `
-{{ if .Subcommands }}
-## Subcommands
-
-| Subcommand | Description |
-|------------|-------------|
-{{ range .Subcommands -}}
-| ` + "`{{ .Name }}`" + ` | {{ .Description }} |
-{{ end }}{{ end }}
-## Flags
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-{{ range .Flags -}}
-| ` + "`{{ .Name }}`" + ` | {{ .Type }} | {{ .Default }} | {{ .Description }}{{ if .Required }} **(required)**{{ end }} |
-{{ end }}
-## Examples
-
-` + "```bash" + `
-{{ .Example }}
-` + "```" + `
-
-## Discovering Commands
-
-` + "```bash" + `
-# Show machine-readable schema for this command
-glean schema {{ .Command }}
-
-# List all available commands
-glean schema | jq '.commands'
-` + "```" + `
-`))
 
 var rootTmpl = template.Must(template.New("root").Parse(`---
 name: {{ .RootSkill }}
@@ -168,86 +31,53 @@ compatibility: Requires the glean binary on $PATH. Install via brew install glea
 
 # Glean CLI
 
-The ` + "`glean`" + ` command-line tool provides authenticated access to your company's Glean instance. It can search documents, chat with Glean Assistant, look up people and teams, manage collections, and more.
+The ` + "`glean`" + ` command-line tool provides authenticated access to your company's Glean instance.
 
-## When to Use
+## Source of truth: ask the binary, not this file
 
-Use the Glean CLI when the user:
-
-- Asks about internal documents, policies, wikis, or company knowledge
-- Wants to find people, teams, or org structure
-- Needs to search across enterprise data sources (Confluence, Jira, Google Drive, Slack, etc.)
-- Asks questions that require company-specific context
-- Wants to manage Glean resources (collections, shortcuts, pins, announcements)
-
-## Installation
+This skill is intentionally thin. The CLI describes itself — always start with:
 
 ` + "```bash" + `
-brew install gleanwork/tap/glean-cli
+glean agent-help                     # environment context + command map with when-to-use guidance
+glean agent-help <command> [sub]     # exact flags, payload shapes, examples for one command
+glean agent-help <command> --json    # machine-readable
 ` + "```" + `
+
+The output is generated from the installed binary, so it matches the version
+on this machine exactly. **When anything below (or in any other document)
+disagrees with ` + "`glean agent-help`" + `, trust ` + "`glean agent-help`" + `.**
+It also reports whether the environment is authenticated and which API surface
+(platform vs legacy) is active.
 
 ## Authentication
 
 ` + "```bash" + `
-# Browser-based OAuth (interactive — recommended)
-glean auth login
+glean auth login                     # browser-based OAuth (interactive)
+glean auth status                    # verify credentials
 
-# Verify credentials
-glean auth status
-
-# CI/scripting (no interactive setup needed)
+# CI/scripting
 export GLEAN_API_TOKEN=your-token
 export GLEAN_SERVER_URL=<your Glean server URL>
 ` + "```" + `
 
-Credentials resolve in this order: environment variables → system keyring → ~/.glean/config.json.
+## Command map
 
-## CLI Syntax
+| Command | When to use | API |
+|---------|-------------|-----|
+{{ range .Commands -}}
+| ` + "`glean {{ .Name }}`" + ` | {{ .WhenToUse }} | {{ .Surface }} |
+{{ end }}
+(Regenerate this table's live equivalent anytime with ` + "`glean agent-help`" + `.)
 
-` + "```bash" + `
-glean <command> [subcommand] [flags]
-` + "```" + `
-
-### Global Flags
-
-| Flag | Description |
-|------|-------------|
-| --output <FORMAT> | json (default), ndjson (one result per line), text |
-| --fields <PATHS> | Dot-path field projection (e.g. results.document.title,results.document.url) |
-| --json <PAYLOAD> | Complete JSON request body (overrides all other flags) |
-| --dry-run | Print request body without sending |
-
-## Schema Introspection
-
-Always call ` + "`glean schema <command>`" + ` before invoking a command you haven't used before.
-
-` + "```bash" + `
-glean schema | jq '.commands'          # list all commands
-glean schema search | jq '.flags'      # flags for search
-` + "```" + `
-
-## Security Rules
+## Ground rules
 
 - **Never** output API tokens or secrets directly
 - **Always** use --dry-run before write/delete operations in automated pipelines
-- Prefer environment variables over config files for CI/CD
-
-## Error Handling
-
-All errors go to stderr; stdout contains only structured output.
-Exit code 0 = success, non-zero = error.
-
-## Available Commands
-
-| Command | Description |
-|---------|-------------|
-{{ range .Commands -}}
-| [glean {{ .Name }}](reference/{{ .Name }}.md) | {{ .Description }} |
-{{ end }}
+- All errors go to stderr; stdout contains only structured output. Exit code 0 = success.
 
 ## Previously installed per-command skills?
 
-Earlier versions of this project shipped one skill per command (` + "`glean-cli-search`" + `, ` + "`glean-cli-pins`" + `, etc.). Those are superseded by this consolidated skill. If you still have them installed, remove them with:
+Earlier versions of this project shipped one skill per command (` + "`glean-cli-search`" + `, ` + "`glean-cli-pins`" + `, etc.) and static per-command reference files. Those are superseded by ` + "`glean agent-help`" + `. If you still have the old skills installed, remove them with:
 
 ` + "```bash" + `
 npx -y skills remove -g -y \
@@ -259,18 +89,15 @@ npx -y skills remove -g -y \
 ` + "```" + `
 `))
 
-// CommandEntry is used by the shared skill template.
+// CommandEntry is a row in the skill's command map, sourced from the schema
+// registry (the same data agent-help serves live).
 type CommandEntry struct {
-	Name        string
-	Description string
+	Name      string
+	WhenToUse string
+	Surface   string
 }
 
-// skipCommands lists commands that should not get their own skill.
-var skipCommands = map[string]bool{
-	"version": true,
-}
-
-// Generate writes SKILL.md files to outputDir for all registered schemas.
+// Generate writes the thin SKILL.md to outputDir.
 func Generate(outputDir string) error {
 	// Remove any legacy per-command skill directories from earlier versions
 	// of this project so the generator output is always idempotent.
@@ -278,18 +105,17 @@ func Generate(outputDir string) error {
 		return fmt.Errorf("cleaning stale skill dirs: %w", err)
 	}
 
-	// Generate shared skill
-	commands := schema.List()
 	var entries []CommandEntry
-	for _, name := range commands {
-		if skipCommands[name] {
-			continue
-		}
+	for _, name := range schema.List() {
 		s, err := schema.Get(name)
 		if err != nil {
 			continue
 		}
-		entries = append(entries, CommandEntry{Name: name, Description: s.Description})
+		use := s.WhenToUse
+		if use == "" {
+			use = s.Description
+		}
+		entries = append(entries, CommandEntry{Name: name, WhenToUse: use, Surface: s.Surface})
 	}
 
 	if err := writeRootSkill(outputDir, entries); err != nil {
@@ -297,28 +123,14 @@ func Generate(outputDir string) error {
 	}
 	fmt.Fprintf(os.Stderr, "  wrote %s/SKILL.md\n", rootSkillName)
 
-	// Generate per-command reference files under the root skill.
-	for _, name := range commands {
-		if skipCommands[name] {
-			continue
-		}
-		s, err := schema.Get(name)
-		if err != nil {
-			continue
-		}
-		if err := writeCommandReference(outputDir, name, s); err != nil {
-			return fmt.Errorf("writing reference for %s: %w", name, err)
-		}
-		fmt.Fprintf(os.Stderr, "  wrote %s/reference/%s.md\n", rootSkillName, name)
-	}
-
 	fmt.Fprintf(os.Stderr, "\nDone. Skills written to %s/\n", outputDir)
 	return nil
 }
 
 // cleanStaleSkillDirs removes any per-command skill directories from earlier
-// layouts of this project (skills/glean-cli-<cmd>/) while leaving the root
-// skill directory and anything unrelated intact.
+// layouts of this project (skills/glean-cli-<cmd>/) and the retired
+// per-command reference directory (skills/glean-cli/reference/), while
+// leaving the root skill directory and anything unrelated intact.
 func cleanStaleSkillDirs(outputDir string) error {
 	entries, err := os.ReadDir(outputDir)
 	if err != nil {
@@ -341,6 +153,10 @@ func cleanStaleSkillDirs(outputDir string) error {
 			return fmt.Errorf("removing legacy skill dir %s: %w", name, err)
 		}
 	}
+	// Static per-command reference files are superseded by `glean agent-help`.
+	if err := os.RemoveAll(filepath.Join(outputDir, rootSkillName, "reference")); err != nil {
+		return fmt.Errorf("removing retired reference dir: %w", err)
+	}
 	return nil
 }
 
@@ -356,87 +172,8 @@ func writeRootSkill(outputDir string, commands []CommandEntry) error {
 	defer f.Close()
 
 	data := struct {
-		Prefix    string
 		RootSkill string
 		Commands  []CommandEntry
-	}{Prefix: skillPrefix, RootSkill: rootSkillName, Commands: commands}
+	}{RootSkill: rootSkillName, Commands: commands}
 	return rootTmpl.Execute(f, data)
-}
-
-func writeCommandReference(outputDir, name string, s schema.CommandSchema) error {
-	dir := filepath.Join(outputDir, rootSkillName, "reference")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	f, err := os.Create(filepath.Join(dir, name+".md"))
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	data := buildSkillData(name, s)
-	return referenceTmpl.Execute(f, data)
-}
-
-func buildSkillData(name string, s schema.CommandSchema) SkillData {
-	desc := skillDescription[name]
-	if desc == "" {
-		desc = s.Description
-	}
-
-	// Build flags
-	var flags []FlagInfo
-	for flagName, fs := range s.Flags {
-		def := ""
-		if fs.Default != nil {
-			def = fmt.Sprintf("%v", fs.Default)
-		}
-		typ := fs.Type
-		if len(fs.Enum) > 0 {
-			typ = strings.Join(fs.Enum, " \\| ")
-		}
-		flags = append(flags, FlagInfo{
-			Name:        flagName,
-			Type:        typ,
-			Default:     def,
-			Description: fs.Description,
-			Required:    fs.Required,
-		})
-	}
-	sort.Slice(flags, func(i, j int) bool {
-		return flags[i].Name < flags[j].Name
-	})
-
-	// Build subcommands from the subcommandMap
-	var subs []SubcommandInfo
-	for key, sdesc := range subcommandMap {
-		parts := strings.SplitN(key, ".", 2)
-		if parts[0] == name {
-			subs = append(subs, SubcommandInfo{Name: parts[1], Description: sdesc})
-		}
-	}
-	sort.Slice(subs, func(i, j int) bool {
-		return subs[i].Name < subs[j].Name
-	})
-
-	hasDryRun := false
-	for _, fl := range flags {
-		if fl.Name == "--dry-run" {
-			hasDryRun = true
-			break
-		}
-	}
-
-	return SkillData{
-		Prefix:      skillPrefix,
-		RootSkill:   rootSkillName,
-		Name:        skillPrefix + name,
-		Description: desc,
-		Command:     name,
-		SchemaDesc:  s.Description,
-		Flags:       flags,
-		Subcommands: subs,
-		Example:     s.Example,
-		HasDryRun:   hasDryRun,
-	}
 }
