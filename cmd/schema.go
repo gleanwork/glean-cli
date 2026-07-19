@@ -74,15 +74,6 @@ glean api /api/search --method POST --raw-field '{"query":"test"}' | jq .results
 	})
 
 	schema.Register(schema.CommandSchema{
-		Command:     "version",
-		Description: "Print the glean CLI version string.",
-		WhenToUse:   "Check the installed CLI version, e.g. before reporting a bug or verifying an upgrade.",
-		Surface:     schema.SurfaceLocal,
-		Flags:       map[string]schema.FlagSchema{},
-		Example:     `glean version`,
-	})
-
-	schema.Register(schema.CommandSchema{
 		Command:     "shortcuts",
 		Description: "Manage Glean shortcuts (go-links). Subcommands: list, get, create, update, delete.",
 		WhenToUse:   "Create or resolve go-links (short memorable URLs like go/roadmap).",
@@ -238,6 +229,18 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	})
 
 	schema.Register(schema.CommandSchema{
+		Command:     "agent-help",
+		Description: "Show agent-facing usage generated from the installed glean binary: environment context plus a command map, or full detail for one command.",
+		WhenToUse:   "Start every session here: discover available commands, exact flags, payload shapes, and whether the environment is authenticated — without static docs in context.",
+		Surface:     schema.SurfaceLocal,
+		Flags: map[string]schema.FlagSchema{
+			"--json": {Type: "boolean", Default: false, Description: "Emit machine-readable JSON"},
+		},
+		Example: `glean agent-help
+glean agent-help agents run --json`,
+	})
+
+	schema.Register(schema.CommandSchema{
 		Command:     "announcements",
 		Description: "Manage Glean announcements. Subcommands: create, update, delete.",
 		WhenToUse:   "Publish or manage company announcements surfaced in Glean.",
@@ -252,10 +255,15 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 }
 
 // NewCmdSchema creates and returns the schema command.
+//
+// Deprecated: superseded by `glean agent-help`, which derives structure from
+// the live command tree and adds context awareness. Kept as a hidden alias
+// for compatibility with existing agent skills that call `glean schema`.
 func NewCmdSchema() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "schema [command]",
-		Short: "Show JSON schema for a command's flags and request format",
+		Use:    "schema [command]",
+		Hidden: true,
+		Short:  "Show JSON schema for a command's flags and request format (deprecated: use agent-help)",
 		Long: `Show machine-readable JSON schema for any glean command.
 
 Agents can call this before invoking a command to understand parameter
