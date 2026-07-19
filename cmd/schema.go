@@ -12,28 +12,28 @@ func init() {
 	// Register schemas for all commands at startup.
 	schema.Register(schema.CommandSchema{
 		Command:     "search",
-		Description: "Search for content in your Glean instance. Results are JSON.",
+		Description: "Search for content in your Glean instance via the platform API (POST /api/search); responses use its snake_case shape. Falls back to the classic API with a warning when the platform API is not enabled; GLEAN_LEGACY_APIS=1 forces the classic API. Results are JSON.",
 		Flags: map[string]schema.FlagSchema{
-			"--json":                          {Type: "string", Description: "Complete JSON request body (overrides individual flags)", Required: false},
+			"--json":                          {Type: "string", Description: "Complete JSON request body in the platform shape: query, page_size, cursor, datasources, datasource_instances, filters, time_range (overrides individual flags). With GLEAN_LEGACY_APIS=1, parsed as the classic shape", Required: false},
 			"--query":                         {Type: "string", Description: "Search query (positional arg)", Required: true},
 			"--page-size":                     {Type: "integer", Default: 10, Description: "Number of results per page"},
-			"--max-snippet-size":              {Type: "integer", Default: 0, Description: "Maximum snippet size in characters"},
+			"--max-snippet-size":              {Type: "integer", Default: 0, Description: "Maximum snippet size in characters (legacy API only)"},
 			"--timeout":                       {Type: "integer", Default: 30000, Description: "Request timeout in milliseconds"},
-			"--disable-spellcheck":            {Type: "boolean", Default: false, Description: "Disable spellcheck"},
+			"--disable-spellcheck":            {Type: "boolean", Default: false, Description: "Disable spellcheck (legacy API only)"},
 			"--datasource":                    {Type: "[]string", Description: "Filter by datasource (repeatable)"},
 			"--type":                          {Type: "[]string", Description: "Filter by document type (repeatable)"},
-			"--tab":                           {Type: "[]string", Description: "Filter by result tab IDs (repeatable)"},
-			"--response-hints":                {Type: "[]string", Default: []string{"RESULTS", "QUERY_METADATA"}, Description: "Response hints"},
-			"--facet-bucket-size":             {Type: "integer", Default: 10, Description: "Maximum facet buckets per result"},
-			"--disable-query-autocorrect":     {Type: "boolean", Default: false, Description: "Disable automatic query corrections"},
-			"--fetch-all-datasource-counts":   {Type: "boolean", Default: false, Description: "Return counts for all datasources"},
-			"--query-overrides-facet-filters": {Type: "boolean", Default: false, Description: "Allow query operators to override facet filters"},
-			"--return-llm-content":            {Type: "boolean", Default: false, Description: "Return expanded LLM-friendly content"},
+			"--tab":                           {Type: "[]string", Description: "Filter by result tab IDs (repeatable, legacy API only)"},
+			"--response-hints":                {Type: "[]string", Default: []string{"RESULTS", "QUERY_METADATA"}, Description: "Response hints (legacy API only)"},
+			"--facet-bucket-size":             {Type: "integer", Default: 10, Description: "Maximum facet buckets per result (legacy API only)"},
+			"--disable-query-autocorrect":     {Type: "boolean", Default: false, Description: "Disable automatic query corrections (legacy API only)"},
+			"--fetch-all-datasource-counts":   {Type: "boolean", Default: false, Description: "Return counts for all datasources (legacy API only)"},
+			"--query-overrides-facet-filters": {Type: "boolean", Default: false, Description: "Allow query operators to override facet filters (legacy API only)"},
+			"--return-llm-content":            {Type: "boolean", Default: false, Description: "Return expanded LLM-friendly content (legacy API only)"},
 			"--output":                        {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json", Description: "Output format"},
 			"--dry-run":                       {Type: "boolean", Default: false, Description: "Print request body without sending"},
 		},
-		Example: `glean search "vacation policy" | jq '.results[].document.title'
-glean search --json '{"query":"Q1 reports","pageSize":5,"datasources":["confluence"]}' | jq .`,
+		Example: `glean search "vacation policy" | jq '.results[].title'
+glean search --json '{"query":"Q1 reports","page_size":5,"datasources":["confluence"]}' | jq .`,
 	})
 
 	schema.Register(schema.CommandSchema{
