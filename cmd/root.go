@@ -137,6 +137,7 @@ func NewCmdRoot() *cobra.Command {
 		NewCmdSearch(),
 		NewCmdChat(),
 		NewCmdAPI(),
+		NewCmdAgentHelp(),
 		NewCmdSchema(),
 	} {
 		sub.GroupID = "core"
