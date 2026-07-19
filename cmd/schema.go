@@ -13,6 +13,8 @@ func init() {
 	schema.Register(schema.CommandSchema{
 		Command:     "search",
 		Description: "Search for content in your Glean instance via the platform API (POST /api/search); responses use its snake_case shape. Falls back to the classic API with a warning when the platform API is not enabled; GLEAN_LEGACY_APIS=1 forces the classic API. Results are JSON.",
+		WhenToUse:   "Find documents, messages, and content across all connected datasources. Start here for any 'find X' task.",
+		Surface:     schema.SurfacePlatform,
 		Flags: map[string]schema.FlagSchema{
 			"--json":                          {Type: "string", Description: "Complete JSON request body in the platform shape: query, page_size, cursor, datasources, datasource_instances, filters, time_range (overrides individual flags). With GLEAN_LEGACY_APIS=1, parsed as the classic shape", Required: false},
 			"--query":                         {Type: "string", Description: "Search query (positional arg)", Required: true},
@@ -39,6 +41,8 @@ glean search --json '{"query":"Q1 reports","page_size":5,"datasources":["conflue
 	schema.Register(schema.CommandSchema{
 		Command:     "chat",
 		Description: "Have a conversation with Glean AI. Streams response to stdout.",
+		WhenToUse:   "Ask Glean AI a question that needs a synthesized, cited answer reasoned over company knowledge, rather than a raw list of results.",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":    {Type: "string", Description: "Complete JSON chat request body (overrides individual flags)"},
 			"--message": {Type: "string", Description: "Chat message (positional arg)", Required: true},
@@ -53,6 +57,8 @@ glean chat --json '{"messages":[{"author":"USER","messageType":"CONTENT","fragme
 	schema.Register(schema.CommandSchema{
 		Command:     "api",
 		Description: "Make a raw authenticated HTTP request to any Glean API endpoint. Bare paths default to /rest/api/v1/; /rest/* and /api/* paths are used verbatim. Requests to /api/* (platform APIs) automatically send the X-Glean-Include-Experimental header.",
+		WhenToUse:   "Escape hatch: call any Glean API endpoint directly (classic /rest/api/v1/* or platform /api/*) when no dedicated subcommand exists.",
+		Surface:     schema.SurfaceRaw,
 		Flags: map[string]schema.FlagSchema{
 			"--method":       {Type: "enum", Enum: []string{"GET", "POST", "PUT", "DELETE", "PATCH"}, Default: "GET", Description: "HTTP method"},
 			"--raw-field":    {Type: "string", Description: "JSON request body as a string"},
@@ -70,6 +76,8 @@ glean api /api/search --method POST --raw-field '{"query":"test"}' | jq .results
 	schema.Register(schema.CommandSchema{
 		Command:     "version",
 		Description: "Print the glean CLI version string.",
+		WhenToUse:   "Check the installed CLI version, e.g. before reporting a bug or verifying an upgrade.",
+		Surface:     schema.SurfaceLocal,
 		Flags:       map[string]schema.FlagSchema{},
 		Example:     `glean version`,
 	})
@@ -77,6 +85,8 @@ glean api /api/search --method POST --raw-field '{"query":"test"}' | jq .results
 	schema.Register(schema.CommandSchema{
 		Command:     "shortcuts",
 		Description: "Manage Glean shortcuts (go-links). Subcommands: list, get, create, update, delete.",
+		WhenToUse:   "Create or resolve go-links (short memorable URLs like go/roadmap).",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":    {Type: "string", Description: "JSON request body (see Glean API docs for shape)"},
 			"--output":  {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
@@ -89,6 +99,8 @@ glean shortcuts create --json '{"data":{"inputAlias":"test/link","destinationUrl
 	schema.Register(schema.CommandSchema{
 		Command:     "agents",
 		Description: "Manage and run Glean agents via the platform API (/api/agents/...). list/get/schemas fall back to the classic API when the platform API is not enabled; run does not (its body shape differs per surface). GLEAN_LEGACY_APIS=1 forces the classic API. Subcommands: list, get, schemas, run.",
+		WhenToUse:   "Discover and execute Glean agents (AI workflows). Use schemas first to learn an agent's expected input, then run.",
+		Surface:     schema.SurfacePlatform,
 		Flags: map[string]schema.FlagSchema{
 			"--json":    {Type: "string", Description: "JSON request body. get/schemas: {\"agent_id\":\"<id>\"}. run: {\"agent_id\":\"<id>\"} plus input (map) or messages ([{role, content:[{type:\"text\",text}]}])"},
 			"--output":  {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
@@ -101,6 +113,8 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	schema.Register(schema.CommandSchema{
 		Command:     "documents",
 		Description: "Retrieve and summarize Glean documents. Subcommands: get, get-by-facets, get-permissions, summarize.",
+		WhenToUse:   "Fetch full metadata, permissions, or an AI summary for documents you already identified (e.g. from search results).",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":    {Type: "string", Description: "JSON request body"},
 			"--output":  {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
@@ -112,6 +126,8 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	schema.Register(schema.CommandSchema{
 		Command:     "entities",
 		Description: "List and read Glean entities and people. Subcommands: list, read-people.",
+		WhenToUse:   "Look up people (org info, contact details) or other structured entities.",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":   {Type: "string", Description: "JSON request body", Required: true},
 			"--output": {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
@@ -122,6 +138,8 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	schema.Register(schema.CommandSchema{
 		Command:     "collections",
 		Description: "Manage Glean collections. Subcommands: create, delete, update, add-items, delete-item.",
+		WhenToUse:   "Curate sets of documents into named collections.",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":    {Type: "string", Description: "JSON request body"},
 			"--output":  {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
@@ -133,6 +151,8 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	schema.Register(schema.CommandSchema{
 		Command:     "pins",
 		Description: "Manage Glean pins. Subcommands: list, get, create, update, remove.",
+		WhenToUse:   "Pin a document to a search query so it always surfaces for that query.",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":    {Type: "string", Description: "JSON request body"},
 			"--output":  {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
@@ -144,6 +164,8 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	schema.Register(schema.CommandSchema{
 		Command:     "answers",
 		Description: "Manage Glean answers. Subcommands: list, get, create, update, delete.",
+		WhenToUse:   "Manage curated Q&A answer cards shown for matching queries.",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":    {Type: "string", Description: "JSON request body"},
 			"--output":  {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
@@ -155,6 +177,8 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	schema.Register(schema.CommandSchema{
 		Command:     "tools",
 		Description: "List and run Glean tools. Subcommands: list, run.",
+		WhenToUse:   "Discover and execute Glean tools (actions) such as creating tickets or sending messages.",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":    {Type: "string", Description: "JSON request body"},
 			"--output":  {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
@@ -166,6 +190,8 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	schema.Register(schema.CommandSchema{
 		Command:     "verification",
 		Description: "Manage document verification. Subcommands: list, verify, remind.",
+		WhenToUse:   "Track and update document freshness verification (verify docs, send reminders).",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":    {Type: "string", Description: "JSON request body"},
 			"--output":  {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
@@ -177,6 +203,8 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	schema.Register(schema.CommandSchema{
 		Command:     "activity",
 		Description: "Report user activity and feedback. Subcommands: report, feedback.",
+		WhenToUse:   "Report page-view activity events or submit result feedback to improve ranking.",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":    {Type: "string", Description: "JSON request body (required)", Required: true},
 			"--dry-run": {Type: "boolean", Default: false},
@@ -187,6 +215,8 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	schema.Register(schema.CommandSchema{
 		Command:     "insights",
 		Description: "Retrieve Glean usage insights. Subcommands: get.",
+		WhenToUse:   "Retrieve aggregate usage analytics (search/AI adoption metrics) for the deployment.",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":    {Type: "string", Description: "JSON request body (required)", Required: true},
 			"--output":  {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
@@ -198,6 +228,8 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	schema.Register(schema.CommandSchema{
 		Command:     "messages",
 		Description: "Retrieve Glean messages. Subcommands: get.",
+		WhenToUse:   "Fetch a specific chat/communication message by ID.",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":   {Type: "string", Description: "JSON request body (required)", Required: true},
 			"--output": {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
@@ -208,6 +240,8 @@ glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	schema.Register(schema.CommandSchema{
 		Command:     "announcements",
 		Description: "Manage Glean announcements. Subcommands: create, update, delete.",
+		WhenToUse:   "Publish or manage company announcements surfaced in Glean.",
+		Surface:     schema.SurfaceLegacy,
 		Flags: map[string]schema.FlagSchema{
 			"--json":    {Type: "string", Description: "JSON request body (required)", Required: true},
 			"--output":  {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
