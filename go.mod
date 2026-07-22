@@ -18,7 +18,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.19.0
 	github.com/fatih/color v1.19.0
 	github.com/gkampitakis/go-snaps v0.5.22
-	github.com/gleanwork/api-client-go v0.12.0
+	github.com/gleanwork/api-client-go v0.13.3
 	github.com/int128/oauth2cli v1.18.0
 	github.com/minio/selfupdate v0.6.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
