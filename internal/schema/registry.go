@@ -20,12 +20,31 @@ type FlagSchema struct {
 	Required    bool     `json:"required,omitempty"`
 }
 
+// Surface values for CommandSchema.Surface.
+const (
+	// SurfacePlatform marks commands served by the platform APIs (/api/*).
+	SurfacePlatform = "platform"
+	// SurfaceLegacy marks commands served by the classic client APIs (/rest/api/v1/*).
+	SurfaceLegacy = "legacy"
+	// SurfaceRaw marks commands that make raw user-directed HTTP requests.
+	SurfaceRaw = "raw"
+	// SurfaceLocal marks commands that never call the Glean API.
+	SurfaceLocal = "local"
+)
+
 // CommandSchema describes one glean command for agent introspection.
 type CommandSchema struct {
-	Command     string                `json:"command"`
-	Description string                `json:"description"`
-	Flags       map[string]FlagSchema `json:"flags"`
-	Example     string                `json:"example"`
+	Command     string `json:"command"`
+	Description string `json:"description"`
+	// WhenToUse is one sentence of agent guidance: the task this command is
+	// the right tool for.
+	WhenToUse string `json:"when_to_use,omitempty"`
+	// Surface names the API family serving the command: one of the Surface*
+	// constants. Commands migrated to the platform APIs flip this to
+	// SurfacePlatform in the same PR.
+	Surface string                `json:"surface,omitempty"`
+	Flags   map[string]FlagSchema `json:"flags"`
+	Example string                `json:"example"`
 }
 
 var (
