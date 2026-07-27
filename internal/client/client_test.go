@@ -4,9 +4,11 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/gleanwork/api-client-go/models/components"
 	"github.com/gleanwork/glean-cli/internal/config"
 	"github.com/gleanwork/glean-cli/internal/httputil"
 	"github.com/stretchr/testify/assert"
@@ -106,6 +108,30 @@ func TestNew_Success(t *testing.T) {
 	client, err := New(cfg)
 	require.NoError(t, err)
 	assert.NotNil(t, client)
+}
+
+// TestNew_SendsExperimentalHeader proves the SDK client built by New opts in
+// to experimental platform endpoints on the wire: every request must carry
+// X-Glean-Include-Experimental: true (via glean.WithIncludeExperimental).
+func TestNew_SendsExperimentalHeader(t *testing.T) {
+	var captured http.Header
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captured = r.Header.Clone()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"results":[],"has_more":false,"next_cursor":null,"request_id":"req-1"}`))
+	}))
+	defer server.Close()
+
+	cfg := &config.Config{GleanServerURL: server.URL, GleanToken: "valid-token"}
+	sdk, err := New(cfg)
+	require.NoError(t, err)
+
+	_, err = sdk.Search.Query(context.Background(), components.PlatformSearchRequest{Query: "test"})
+	require.NoError(t, err)
+
+	require.NotNil(t, captured, "server should have received a request")
+	assert.Equal(t, "true", captured.Get("X-Glean-Include-Experimental"))
+	assert.Equal(t, "Bearer valid-token", captured.Get("Authorization"))
 }
 
 // TestNew_FullHostnames verifies that custom-shape Glean server URLs (vanity

@@ -110,6 +110,12 @@ func New(cfg *config.Config) (*glean.Glean, error) {
 	opts := []glean.SDKOption{
 		glean.WithServerURL(cfg.GleanServerURL),
 		glean.WithSecurity(token),
+		// Always opt in to experimental platform endpoints (/api/*). The CLI
+		// is platform-first: migrated commands call platform endpoints by
+		// default and fall back to the classic API when the tenant gate is
+		// off (see internal/platform). The X_GLEAN_INCLUDE_EXPERIMENTAL env
+		// var takes precedence over this option inside the SDK.
+		glean.WithIncludeExperimental(true),
 		glean.WithClient(&http.Client{
 			Transport: httputil.NewTransport(http.DefaultTransport,
 				httputil.WithHeader("X-Glean-Auth-Type", authType),
