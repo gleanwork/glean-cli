@@ -88,14 +88,14 @@ glean shortcuts create --json '{"data":{"inputAlias":"test/link","destinationUrl
 
 	schema.Register(schema.CommandSchema{
 		Command:     "agents",
-		Description: "Manage and run Glean agents. Subcommands: list, get, schemas, run.",
+		Description: "Manage and run Glean agents via the platform API (/api/agents/...). list/get/schemas fall back to the classic API when the platform API is not enabled; run does not (its body shape differs per surface). GLEAN_LEGACY_APIS=1 forces the classic API. Subcommands: list, get, schemas, run.",
 		Flags: map[string]schema.FlagSchema{
-			"--json":    {Type: "string", Description: "JSON request body"},
+			"--json":    {Type: "string", Description: "JSON request body. get/schemas: {\"agent_id\":\"<id>\"}. run: {\"agent_id\":\"<id>\"} plus input (map) or messages ([{role, content:[{type:\"text\",text}]}])"},
 			"--output":  {Type: "enum", Enum: []string{"json", "ndjson", "text"}, Default: "json"},
 			"--dry-run": {Type: "boolean", Default: false},
 		},
-		Example: `glean agents list | jq '.[].id'
-glean agents run --json '{"agentId":"my-agent","input":{"query":"test"}}'`,
+		Example: `glean agents list | jq '.agents[].agent_id'
+glean agents run --json '{"agent_id":"my-agent","input":{"query":"test"}}'`,
 	})
 
 	schema.Register(schema.CommandSchema{
