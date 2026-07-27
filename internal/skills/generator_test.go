@@ -17,15 +17,17 @@ func init() {
 	schema.Register(schema.CommandSchema{
 		Command:     "testsearch",
 		Description: "Test search description.",
+		WhenToUse:   "Find test things.",
+		Surface:     schema.SurfacePlatform,
 		Flags: map[string]schema.FlagSchema{
 			"--query": {Type: "string", Description: "Search query", Required: true},
-			"--page":  {Type: "integer", Description: "Page number", Default: 1},
 		},
 		Example: "glean testsearch --query hello",
 	})
 	schema.Register(schema.CommandSchema{
 		Command:     "testpins",
 		Description: "Test pins description.",
+		Surface:     schema.SurfaceLegacy,
 		Flags:       map[string]schema.FlagSchema{},
 		Example:     "glean testpins list",
 	})
@@ -38,17 +40,11 @@ func runGenerator(t *testing.T) string {
 	return dir
 }
 
-// registeredCommands returns the list of command names that Generate would
-// process (registry minus skipCommands).
-func registeredCommands() []string {
-	var out []string
-	for _, name := range schema.List() {
-		if skipCommands[name] {
-			continue
-		}
-		out = append(out, name)
-	}
-	return out
+func readRootSkill(t *testing.T, dir string) string {
+	t.Helper()
+	body, err := os.ReadFile(filepath.Join(dir, rootSkillName, "SKILL.md"))
+	require.NoError(t, err)
+	return string(body)
 }
 
 func TestGenerate_WritesRootSkill(t *testing.T) {
@@ -60,14 +56,41 @@ func TestGenerate_WritesRootSkill(t *testing.T) {
 	assert.Greater(t, info.Size(), int64(0), "root SKILL.md must be non-empty")
 }
 
-func TestGenerate_WritesReferenceForEveryCommand(t *testing.T) {
+func TestGenerate_PointsToAgentHelpAsSourceOfTruth(t *testing.T) {
+	content := readRootSkill(t, runGenerator(t))
+
+	assert.Contains(t, content, "glean agent-help")
+	assert.Contains(t, strings.ToLower(content), "source of truth")
+	assert.Contains(t, content, "--json")
+}
+
+func TestGenerate_CommandMapFromRegistry(t *testing.T) {
+	content := readRootSkill(t, runGenerator(t))
+
+	assert.Contains(t, content, "`glean testsearch`")
+	assert.Contains(t, content, "Find test things.")
+	assert.Contains(t, content, schema.SurfacePlatform)
+	// testpins has no WhenToUse — Description is the fallback.
+	assert.Contains(t, content, "Test pins description.")
+}
+
+func TestGenerate_NoReferenceFiles(t *testing.T) {
 	dir := runGenerator(t)
 
-	for _, name := range registeredCommands() {
-		p := filepath.Join(dir, rootSkillName, "reference", name+".md")
-		_, err := os.Stat(p)
-		assert.NoError(t, err, "expected reference file for command %q at %s", name, p)
-	}
+	_, err := os.Stat(filepath.Join(dir, rootSkillName, "reference"))
+	assert.True(t, os.IsNotExist(err), "per-command reference files are retired in favor of agent-help")
+}
+
+func TestGenerate_RemovesRetiredReferenceDir(t *testing.T) {
+	dir := t.TempDir()
+	stale := filepath.Join(dir, rootSkillName, "reference")
+	require.NoError(t, os.MkdirAll(stale, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(stale, "search.md"), []byte("stale"), 0o644))
+
+	require.NoError(t, Generate(dir))
+
+	_, err := os.Stat(stale)
+	assert.True(t, os.IsNotExist(err), "retired reference dir must be cleaned up")
 }
 
 func TestGenerate_NoLegacySkillDirs(t *testing.T) {
@@ -140,46 +163,9 @@ func TestCleanStaleSkillDirs_PreservesUnrelatedDirs(t *testing.T) {
 	assert.NoError(t, err, "unrelated dir must not be touched by cleanup")
 }
 
-func TestReferenceFile_NoFrontmatter(t *testing.T) {
-	dir := runGenerator(t)
-
-	cmds := registeredCommands()
-	require.NotEmpty(t, cmds, "at least one registered command required for this test")
-
-	p := filepath.Join(dir, rootSkillName, "reference", cmds[0]+".md")
-	body, err := os.ReadFile(p)
-	require.NoError(t, err)
-	content := string(body)
-
-	assert.False(t, strings.HasPrefix(content, "---"),
-		"reference file must not start with YAML frontmatter: %s", p)
-	assert.NotContains(t, content, "PREREQUISITE",
-		"reference file must not carry the legacy prereq line")
-}
-
-func TestRootSkill_LinksPointToReferenceFiles(t *testing.T) {
-	dir := runGenerator(t)
-
-	body, err := os.ReadFile(filepath.Join(dir, rootSkillName, "SKILL.md"))
-	require.NoError(t, err)
-	content := string(body)
-
-	for _, name := range registeredCommands() {
-		expected := "(reference/" + name + ".md)"
-		assert.Contains(t, content, expected,
-			"root SKILL.md must link to %s", expected)
-	}
-
-	assert.NotContains(t, content, "../"+skillPrefix,
-		"root SKILL.md must not contain legacy ../glean-cli-<cmd>/ links")
-}
-
 func TestRootSkill_IncludesMigrationNote(t *testing.T) {
-	dir := runGenerator(t)
-
-	body, err := os.ReadFile(filepath.Join(dir, rootSkillName, "SKILL.md"))
-	require.NoError(t, err)
-	assert.Contains(t, string(body), "npx -y skills remove",
+	content := readRootSkill(t, runGenerator(t))
+	assert.Contains(t, content, "npx -y skills remove",
 		"root SKILL.md must carry the per-command cleanup one-liner")
 }
 
@@ -208,4 +194,14 @@ func snapshotTree(t *testing.T, root string) map[string]string {
 	})
 	require.NoError(t, err)
 	return out
+}
+
+// Verify the retired strings module-wide: the generator must no longer strip
+// frontmatter into reference files or reference glean schema.
+func TestRootSkill_NoStaleSchemaReferences(t *testing.T) {
+	content := readRootSkill(t, runGenerator(t))
+	assert.False(t, strings.Contains(content, "glean schema "),
+		"skill must route agents to agent-help, not the deprecated schema command")
+	assert.NotContains(t, content, "(reference/",
+		"skill must not link to retired reference files")
 }
