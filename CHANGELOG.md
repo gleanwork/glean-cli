@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0](https://github.com/gleanwork/glean-cli/compare/v0.17.1...v0.18.0) (2026-07-27)
+
+
+### Features
+
+* **agents:** serve agents commands from the platform API by default ([#136](https://github.com/gleanwork/glean-cli/issues/136)) ([21737e2](https://github.com/gleanwork/glean-cli/commit/21737e22c7fc7abfc309d0a583030ba9d5bde836))
+* **api:** route /api/* platform paths and send experimental header ([#140](https://github.com/gleanwork/glean-cli/issues/140)) ([b8a88cc](https://github.com/gleanwork/glean-cli/commit/b8a88ccae971c4ab88416a2b6dc97ccc9f4be737))
+* **cmdutil:** teach Build the platform-first fallback protocol ([#135](https://github.com/gleanwork/glean-cli/issues/135)) ([0b8da87](https://github.com/gleanwork/glean-cli/commit/0b8da8790ea62bf8799351dca7fe87eba015d3c8))
+* **platform:** platform-first routing with legacy fallback ([#132](https://github.com/gleanwork/glean-cli/issues/132)) ([4b9131a](https://github.com/gleanwork/glean-cli/commit/4b9131aff4ccaedacfd85b7580d067ed4125cdc8))
+* **search:** platform search request builder and runner ([#133](https://github.com/gleanwork/glean-cli/issues/133)) ([046a998](https://github.com/gleanwork/glean-cli/commit/046a9987d34d294ed7198d3fe31c119435887b38))
+* **search:** serve glean search from the platform API by default ([#134](https://github.com/gleanwork/glean-cli/issues/134)) ([bf4c747](https://github.com/gleanwork/glean-cli/commit/bf4c7472e5fc84db0cea9702316e5da6a71ca371))
+
+
+### Dependencies
+
+* bump github.com/gleanwork/api-client-go to v0.13.3 ([#131](https://github.com/gleanwork/glean-cli/issues/131)) ([aefae40](https://github.com/gleanwork/glean-cli/commit/aefae40ada7db81557a672bd06638aa1aa80d45a))
+* **deps:** bump github.com/coreos/go-oidc/v3 from 3.19.0 to 3.20.0 ([#130](https://github.com/gleanwork/glean-cli/issues/130)) ([0951fdd](https://github.com/gleanwork/glean-cli/commit/0951fdd1e766b5821351e0f38f95a2d701b51a53))
+* **deps:** bump github.com/gkampitakis/go-snaps from 0.5.22 to 0.5.23 ([#129](https://github.com/gleanwork/glean-cli/issues/129)) ([ab4b9eb](https://github.com/gleanwork/glean-cli/commit/ab4b9ebedfd1c2758227ad8d06195bb124b10f5e))
+* **deps:** bump github.com/gleanwork/api-client-go ([#142](https://github.com/gleanwork/glean-cli/issues/142)) ([76feda1](https://github.com/gleanwork/glean-cli/commit/76feda1b33367d3085c411e174c46738fcd2e041))
+* **deps:** bump golang.org/x/mod from 0.37.0 to 0.38.0 ([#128](https://github.com/gleanwork/glean-cli/issues/128)) ([c3bb409](https://github.com/gleanwork/glean-cli/commit/c3bb409b2fa4d64ddb70c71b4c3900c2963c1e0b))
+* **deps:** bump golang.org/x/net ([#124](https://github.com/gleanwork/glean-cli/issues/124)) ([562f078](https://github.com/gleanwork/glean-cli/commit/562f07869f3d7d25ce6ba43c33f537230eed1d93))
+* **deps:** bump golang.org/x/term from 0.44.0 to 0.45.0 ([#126](https://github.com/gleanwork/glean-cli/issues/126)) ([a85d09a](https://github.com/gleanwork/glean-cli/commit/a85d09a2787f784895b61081710f02f94394861e))
+
 ## [0.17.1](https://github.com/gleanwork/glean-cli/compare/v0.17.0...v0.17.1) (2026-06-29)
 
 
