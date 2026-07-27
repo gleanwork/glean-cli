@@ -58,6 +58,95 @@ func TestAPICommandPreviewShowsAuthHeader(t *testing.T) {
 	assert.NotContains(t, out, "Bearer \n", "auth token must not be empty")
 }
 
+func TestResolveAPIPath(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"search", "/rest/api/v1/search"},
+		{"/search", "/rest/api/v1/search"},
+		{"users/me", "/rest/api/v1/users/me"},
+		{"/rest/api/v1/search", "/rest/api/v1/search"},
+		{"rest/api/v1/search", "/rest/api/v1/search"},
+		{"/api/search", "/api/search"},
+		{"api/search", "/api/search"},
+		{"/api/agents/search", "/api/agents/search"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			assert.Equal(t, tt.want, resolveAPIPath(tt.in))
+		})
+	}
+}
+
+func TestSendExperimentalHeader(t *testing.T) {
+	tests := []struct {
+		name     string
+		endpoint string
+		force    bool
+		want     bool
+	}{
+		{"classic path, no flag", "search", false, false},
+		{"classic path, forced", "search", true, true},
+		{"platform path, no flag", "/api/search", false, true},
+		{"platform path without slash", "api/search", false, true},
+		{"explicit rest path, no flag", "/rest/api/v1/search", false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := sendExperimentalHeader(APIOptions{experimental: tt.force}, tt.endpoint)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestAPICommandPreviewExperimentalHeader(t *testing.T) {
+	t.Setenv("GLEAN_API_TOKEN", "test-token-for-preview")
+	t.Setenv("GLEAN_SERVER_URL", "https://test.glean.com")
+
+	tests := []struct {
+		name       string
+		args       []string
+		wantHeader bool
+		wantURL    string
+	}{
+		{
+			name:       "platform path sends header automatically",
+			args:       []string{"--preview", "--method", "POST", "--raw-field", `{"query":"test"}`, "/api/search"},
+			wantHeader: true,
+			wantURL:    "https://test.glean.com/api/search",
+		},
+		{
+			name:       "classic path omits header",
+			args:       []string{"--preview", "--method", "POST", "--raw-field", `{"query":"test"}`, "search"},
+			wantHeader: false,
+			wantURL:    "https://test.glean.com/rest/api/v1/search",
+		},
+		{
+			name:       "classic path with --experimental sends header",
+			args:       []string{"--preview", "--method", "POST", "--raw-field", `{"query":"test"}`, "--experimental", "search"},
+			wantHeader: true,
+			wantURL:    "https://test.glean.com/rest/api/v1/search",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := bytes.NewBufferString("")
+			cmd := NewCmdAPI()
+			cmd.SetOut(b)
+			cmd.SetArgs(tt.args)
+			require.NoError(t, cmd.Execute())
+			out := b.String()
+			assert.Contains(t, out, tt.wantURL)
+			if tt.wantHeader {
+				assert.Contains(t, out, "X-Glean-Include-Experimental: true")
+			} else {
+				assert.NotContains(t, out, "X-Glean-Include-Experimental")
+			}
+		})
+	}
+}
+
 func TestApiCmd(t *testing.T) {
 	tests := []struct {
 		name    string

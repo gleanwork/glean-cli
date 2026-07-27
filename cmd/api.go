@@ -21,14 +21,19 @@ import (
 	"golang.org/x/term"
 )
 
+// experimentalHeader opts a request into experimental (platform) API
+// endpoints. Without it, experimental endpoints return a hidden 404.
+const experimentalHeader = "X-Glean-Include-Experimental"
+
 // APIOptions holds configuration for the API command.
 type APIOptions struct {
-	method      string
-	requestBody string
-	inputFile   string
-	preview     bool
-	raw         bool
-	noColor     bool
+	method       string
+	requestBody  string
+	inputFile    string
+	preview      bool
+	raw          bool
+	noColor      bool
+	experimental bool
 }
 
 // NewCmdAPI creates and returns the api command.
@@ -41,9 +46,16 @@ func NewCmdAPI() *cobra.Command {
 		Long: heredoc.Doc(`
 			Makes an authenticated HTTP request to the Glean API and prints the response.
 
-			The endpoint argument should be a path of a Glean API endpoint. For example:
+			The endpoint argument should be a path of a Glean API endpoint. Bare paths
+			default to the classic REST API under /rest/api/v1/:
 			  glean api search
 			  glean api users/me
+
+			Paths starting with /rest/ or /api/ are used verbatim, so the new platform
+			APIs are reachable directly. Requests to /api/* automatically send the
+			X-Glean-Include-Experimental header (use --experimental to force it on
+			classic endpoints):
+			  glean api /api/search --method POST --raw-field '{"query": "test"}'
 
 			The default HTTP request method is "GET". To use a different method,
 			use the --method flag:
@@ -63,6 +75,9 @@ func NewCmdAPI() *cobra.Command {
 
 			# Search with parameters
 			$ glean api search --method POST --raw-field '{"query": "rust programming"}'
+
+			# Platform API search (experimental header sent automatically)
+			$ glean api /api/search --method POST --raw-field '{"query": "rust programming"}'
 
 			# Search with parameters from a file
 			$ glean api search --method POST --input search-params.json
@@ -114,7 +129,7 @@ func NewCmdAPI() *cobra.Command {
 			}
 
 			if opts.preview {
-				return previewRequest(cmd, cfg, opts.method, endpoint, body, opts.noColor)
+				return previewRequest(cmd, cfg, opts, endpoint, body)
 			}
 
 			useSpinner := term.IsTerminal(int(os.Stderr.Fd())) && !opts.raw && !opts.noColor
@@ -128,7 +143,7 @@ func NewCmdAPI() *cobra.Command {
 				defer s.Stop()
 			}
 
-			resp, err := rawAPIRequest(cmd.Context(), cfg, opts.method, endpoint, body)
+			resp, err := rawAPIRequest(cmd.Context(), cfg, opts, endpoint, body)
 			if err != nil {
 				return err
 			}
@@ -146,20 +161,39 @@ func NewCmdAPI() *cobra.Command {
 	cmd.Flags().BoolVar(&opts.preview, "preview", false, "Preview the API request without sending it")
 	cmd.Flags().BoolVar(&opts.raw, "raw", false, "Print raw API response")
 	cmd.Flags().BoolVar(&opts.noColor, "no-color", false, "Disable colorized output")
+	cmd.Flags().BoolVar(&opts.experimental, "experimental", false, "Send the "+experimentalHeader+" header (automatic for /api/* paths)")
 
 	return cmd
 }
 
-// apiFullURL returns the full REST API URL for an endpoint path.
-func apiFullURL(cfg *config.Config, path string) string {
-	if !strings.HasPrefix(path, "/rest/api/v1/") {
-		path = "/rest/api/v1/" + strings.TrimPrefix(path, "/")
+// resolveAPIPath normalizes an endpoint argument to a server-relative path.
+// Paths under /rest/ or /api/ are used verbatim (the platform APIs live at
+// /api/*); anything else keeps the historical default prefix /rest/api/v1/.
+func resolveAPIPath(path string) string {
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
 	}
-	return cfg.GleanServerURL + path
+	if strings.HasPrefix(path, "/rest/") || strings.HasPrefix(path, "/api/") {
+		return path
+	}
+	return "/rest/api/v1" + path
+}
+
+// apiFullURL returns the full API URL for an endpoint path.
+func apiFullURL(cfg *config.Config, path string) string {
+	return cfg.GleanServerURL + resolveAPIPath(path)
+}
+
+// sendExperimentalHeader reports whether the request should carry the
+// X-Glean-Include-Experimental header: always for platform (/api/*) paths —
+// without it experimental endpoints answer with a hidden 404 that reads like
+// a typo'd path — or when forced via --experimental.
+func sendExperimentalHeader(opts APIOptions, endpoint string) bool {
+	return opts.experimental || strings.HasPrefix(resolveAPIPath(endpoint), "/api/")
 }
 
 // rawAPIRequest makes an authenticated HTTP request to the Glean API.
-func rawAPIRequest(ctx context.Context, cfg *config.Config, method, endpoint string, body map[string]interface{}) ([]byte, error) {
+func rawAPIRequest(ctx context.Context, cfg *config.Config, opts APIOptions, endpoint string, body map[string]interface{}) ([]byte, error) {
 	url := apiFullURL(cfg, endpoint)
 
 	var bodyReader io.Reader
@@ -171,7 +205,7 @@ func rawAPIRequest(ctx context.Context, cfg *config.Config, method, endpoint str
 		bodyReader = bytes.NewReader(bodyBytes)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, opts.method, url, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
@@ -182,6 +216,9 @@ func rawAPIRequest(ctx context.Context, cfg *config.Config, method, endpoint str
 	req.Header.Set("Authorization", "Bearer "+token)
 	if authType != "" {
 		req.Header.Set("X-Glean-Auth-Type", authType)
+	}
+	if sendExperimentalHeader(opts, endpoint) {
+		req.Header.Set(experimentalHeader, "true")
 	}
 
 	httpClient := httputil.NewHTTPClient(30 * time.Second)
@@ -215,9 +252,9 @@ func rawAPIRequest(ctx context.Context, cfg *config.Config, method, endpoint str
 	return respBody, nil
 }
 
-func previewRequest(cmd *cobra.Command, cfg *config.Config, method, endpoint string, body map[string]interface{}, noColor bool) error {
+func previewRequest(cmd *cobra.Command, cfg *config.Config, opts APIOptions, endpoint string, body map[string]interface{}) error {
 	w := cmd.OutOrStdout()
-	fmt.Fprintf(w, "Request Method: %s\n", method)
+	fmt.Fprintf(w, "Request Method: %s\n", opts.method)
 	fmt.Fprintf(w, "Request URL: %s\n", apiFullURL(cfg, endpoint))
 	fmt.Fprintf(w, "\nRequest Headers:\n")
 	fmt.Fprintf(w, "  Content-Type: application/json\n")
@@ -228,6 +265,9 @@ func previewRequest(cmd *cobra.Command, cfg *config.Config, method, endpoint str
 	if authType != "" {
 		fmt.Fprintf(w, "  X-Glean-Auth-Type: %s\n", authType)
 	}
+	if sendExperimentalHeader(opts, endpoint) {
+		fmt.Fprintf(w, "  %s: true\n", experimentalHeader)
+	}
 
 	if body != nil {
 		fmt.Fprintf(w, "\nRequest Body:\n")
@@ -236,7 +276,7 @@ func previewRequest(cmd *cobra.Command, cfg *config.Config, method, endpoint str
 			return fmt.Errorf("failed to format request body: %w", err)
 		}
 		return output.Write(w, bodyBytes, output.Options{
-			NoColor: noColor,
+			NoColor: opts.noColor,
 			Format:  "json",
 		})
 	}
