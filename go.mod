@@ -1,6 +1,6 @@
 module github.com/gleanwork/glean-cli
 
-go 1.25.10
+go 1.26.8
 
 require (
 	github.com/briandowns/spinner v1.23.2
@@ -18,7 +18,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/fatih/color v1.19.0
 	github.com/gkampitakis/go-snaps v0.5.23
-	github.com/gleanwork/api-client-go v0.13.4
+	github.com/gleanwork/api-client-go v0.16.0
 	github.com/int128/oauth2cli v1.18.0
 	github.com/minio/selfupdate v0.6.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
