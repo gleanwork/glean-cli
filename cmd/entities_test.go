@@ -96,7 +96,8 @@ func TestEntitiesReadPeopleDryRun(t *testing.T) {
 	snaps.MatchInlineSnapshot(t, b.String(), snaps.Inline(`{
   "emailIds": [
     "user@example.com"
-  ]
+  ],
+  "fallbackToAuthenticatedIdentity": false
 }
 `))
 }

@@ -6,7 +6,7 @@
 
 ### Prerequisites
 
-- Go 1.25 or higher
+- Go 1.26 or higher
 - [mise](https://mise.jdx.dev/getting-started.html) (tool and task runner)
 - Git
 
