@@ -1,6 +1,6 @@
 module github.com/gleanwork/glean-cli
 
-go 1.25.10
+go 1.26.0
 
 require (
 	github.com/briandowns/spinner v1.23.2
@@ -25,7 +25,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/mod v0.38.0
-	golang.org/x/oauth2 v0.36.0
+	golang.org/x/oauth2 v0.37.0
 	golang.org/x/term v0.45.0
 )
 
