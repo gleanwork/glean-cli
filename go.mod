@@ -1,6 +1,6 @@
 module github.com/gleanwork/glean-cli
 
-go 1.25.10
+go 1.26.10
 
 require (
 	github.com/briandowns/spinner v1.23.2
@@ -18,15 +18,16 @@ require (
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/fatih/color v1.19.0
 	github.com/gkampitakis/go-snaps v0.5.23
-	github.com/gleanwork/api-client-go v0.13.4
+	github.com/gleanwork/api-client-go v0.17.3
 	github.com/int128/oauth2cli v1.18.0
 	github.com/minio/selfupdate v0.6.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
+	github.com/spf13/pflag v1.0.9
 	github.com/stretchr/testify v1.11.1
 	github.com/zalando/go-keyring v0.2.8
-	golang.org/x/mod v0.38.0
-	golang.org/x/oauth2 v0.36.0
-	golang.org/x/term v0.45.0
+	golang.org/x/mod v0.42.0
+	golang.org/x/oauth2 v0.37.0
+	golang.org/x/term v0.47.0
 )
 
 require (
@@ -70,7 +71,6 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
-	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/tidwall/gjson v1.19.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
@@ -81,7 +81,7 @@ require (
 	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

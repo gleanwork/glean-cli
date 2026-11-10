@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go-version: ["1.25"]
+        go-version: ["1.26"]
 
     steps:
       - name: Set git to use LF (for cross-platform snapshot testing)

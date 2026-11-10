@@ -24,10 +24,10 @@ type agentIDRequest struct {
 // takes the agent ID as a path parameter (POST /api/agents/{agent_id}/runs),
 // so the CLI folds it into the --json body alongside the run inputs.
 type agentRunRequest struct {
-	AgentID  string                       `json:"agent_id"`
-	Input    map[string]any               `json:"input,omitempty"`
-	Messages []components.PlatformMessage `json:"messages,omitempty"`
-	Metadata map[string]any               `json:"metadata,omitempty"`
+	AgentID  string                            `json:"agent_id"`
+	Input    map[string]any                    `json:"input,omitempty"`
+	Messages []components.PlatformMessageInput `json:"messages,omitempty"`
+	Metadata map[string]any                    `json:"metadata,omitempty"`
 }
 
 func NewCmdAgents() *cobra.Command {
