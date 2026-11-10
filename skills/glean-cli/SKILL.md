@@ -44,7 +44,7 @@ export GLEAN_SERVER_URL=<your Glean server URL>
 | `glean agents` | Discover and execute Glean agents (AI workflows). Use schemas first to learn an agent's expected input, then run. | platform |
 | `glean announcements` | Publish or manage company announcements surfaced in Glean. | legacy |
 | `glean answers` | Manage curated Q&A answer cards shown for matching queries. | legacy |
-| `glean api` | Escape hatch: call any Glean API endpoint directly when no dedicated subcommand exists. | raw |
+| `glean api` | Escape hatch: call any Glean API endpoint directly (classic /rest/api/v1/* or platform /api/*) when no dedicated subcommand exists. | raw |
 | `glean chat` | Ask Glean AI a question that needs a synthesized, cited answer reasoned over company knowledge, rather than a raw list of results. | legacy |
 | `glean collections` | Curate sets of documents into named collections. | legacy |
 | `glean documents` | Fetch full metadata, permissions, or an AI summary for documents you already identified (e.g. from search results). | legacy |

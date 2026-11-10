@@ -343,7 +343,7 @@ glean completion fish   # Fish
 
 The `skills/` directory contains a single [Agent Skill](https://agentskills.io) — `glean-cli` — that teaches AI coding agents how to use the Glean CLI effectively. Skills are supported by Claude Code, Cursor, GitHub Copilot, VS Code, Gemini CLI, OpenAI Codex, Goose, Amp, Roo Code, Junie, and [many others](https://agentskills.io).
 
-The root `SKILL.md` is a navigation hub; per-command details (flags, subcommands, examples) live under `skills/glean-cli/reference/<command>.md` and are loaded on demand.
+`SKILL.md` is a thin router: it lists the commands and tells the agent to run `glean agent-help` for flags, payload shapes, and examples. That output comes from the installed binary, so it always matches the agent's version.
 
 ### Install
 

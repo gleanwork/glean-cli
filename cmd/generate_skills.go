@@ -13,12 +13,12 @@ func NewCmdGenerateSkills() *cobra.Command {
 		Use:   "generate-skills",
 		Short: "Generate SKILL.md files from the CLI's schema registry",
 		Long: `Generates a single Agent Skill (https://agentskills.io) from the CLI's own
-schema registry. The skill lives at skills/glean-cli/SKILL.md as a navigation
-hub; per-command detail files (flags tables, subcommands, examples) are written
-to skills/glean-cli/reference/<command>.md and loaded on demand.
+schema registry. The skill lives at skills/glean-cli/SKILL.md as a thin router:
+it holds a command map and points agents to glean agent-help for flags, payload
+shapes, and examples, so per-command detail always matches the installed binary.
 
-The generator is idempotent and will clean up any legacy skills/glean-cli-<cmd>/
-directories from earlier layouts.
+The generator is idempotent and removes directories from earlier layouts
+(skills/glean-cli-<cmd>/ and skills/glean-cli/reference/).
 
 Run this after adding or modifying commands to keep skills in sync.
 
