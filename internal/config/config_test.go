@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -371,7 +372,50 @@ func TestClearTokenFromStorage(t *testing.T) {
 		assert.Empty(t, cfg.GleanToken)
 		assert.Equal(t, "https://acme-be.glean.com", cfg.GleanServerURL)
 	})
+
+	t.Run("clears the file token when no keyring is available", func(t *testing.T) {
+		_ = ClearConfig()
+
+		// e.g. a devcontainer with no Secret Service daemon running
+		keyring.MockInitWithError(errors.New("The name org.freedesktop.secrets was not provided by any .service files"))
+		t.Cleanup(keyring.MockInit)
+
+		// SaveConfig falls back to file-only storage when the keyring is unavailable.
+		require.NoError(t, SaveConfig("https://acme-be.glean.com", "stale-api-token"))
+
+		require.NoError(t, ClearTokenFromStorage())
+
+		cfg, err := loadFromFile()
+		require.NoError(t, err)
+		assert.Empty(t, cfg.GleanToken, "token should be cleared from the config file")
+		assert.Equal(t, "https://acme-be.glean.com", cfg.GleanServerURL)
+	})
+
+	t.Run("still fails when a keyring token can be read but not deleted", func(t *testing.T) {
+		_, cleanup := setupTestKeyring(t)
+		defer cleanup()
+		keyringImpl = &undeletableKeyring{token: "stale-api-token"}
+
+		err := ClearTokenFromStorage()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "error clearing token from keyring")
+	})
 }
+
+// undeletableKeyring holds a readable token that cannot be deleted, like a
+// keychain that allows reads but denies the delete.
+type undeletableKeyring struct{ token string }
+
+func (k *undeletableKeyring) Get(_, key string) (string, error) {
+	if key == tokenKey {
+		return k.token, nil
+	}
+	return "", keyring.ErrNotFound
+}
+
+func (k *undeletableKeyring) Set(_, _, _ string) error { return nil }
+
+func (k *undeletableKeyring) Delete(_, _ string) error { return errors.New("delete denied") }
 
 func TestLoadConfigEnvPriority(t *testing.T) {
 	isolateAuthState(t)

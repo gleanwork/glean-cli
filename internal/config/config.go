@@ -231,7 +231,14 @@ func ClearTokenFromStorage() error {
 	cfgLog.Log("clearing stale API token from storage")
 	// Remove token from keyring (ignore not-found).
 	if err := keyringImpl.Delete(ServiceName, tokenKey); err != nil && err != keyring.ErrNotFound {
-		return fmt.Errorf("error clearing token from keyring: %w", err)
+		// If the keyring can't be read either (for example, no Secret Service
+		// daemon in a container), no token stored there can shadow the new
+		// credentials, so fall through to the config file like SaveConfig does.
+		// Only fail when a token is still readable from the keyring.
+		if _, getErr := keyringImpl.Get(ServiceName, tokenKey); getErr == nil {
+			return fmt.Errorf("error clearing token from keyring: %w", err)
+		}
+		keyringLog.Log("keyring unavailable, clearing token from config file only: %v", err)
 	}
 
 	// Remove token from config file while preserving other fields.
